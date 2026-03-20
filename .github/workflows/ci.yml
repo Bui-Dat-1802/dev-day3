@@ -30,12 +30,23 @@ jobs:
     name: Gosec
     runs-on: ubuntu-latest
     needs: test
+    defaults:
+      run:
+        working-directory: ./backend
     steps:
       - uses: actions/checkout@v4
-      - name: Run Gosec Security Scanner
-        uses: securego/gosec@v2.22.0
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
-          args: -exclude=G104,G114 ./backend/...
+          go-version: '1.24.x'
+      - name: Install dependencies
+        run: |
+          go mod download
+          go build ./...
+      - name: Run Gosec Security Scanner
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          $(go env GOPATH)/bin/gosec -exclude=G104,G114 ./...
 
   security-trivy:
     name: Trivy
