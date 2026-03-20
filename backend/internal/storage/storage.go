@@ -90,6 +90,11 @@ type ScanStorage interface {
 	CreatePortScanResult(result *model.PortScanResult) error
 	GetPortScanResultsByAsset(assetID string) ([]*model.PortScanResult, error)
 	GetPortScanResultsByScan(scanJobID string) ([]*model.PortScanResult, error)
+
+	// SSL result operations
+	CreateSSLResult(result *model.SSLScanResult) error
+	GetSSLScanResultsByAsset(assetID string) ([]*model.SSLScanResult, error)
+	GetSSLScanResultsByScan(scanJobID string) ([]*model.SSLScanResult, error)
 }
 
 /*

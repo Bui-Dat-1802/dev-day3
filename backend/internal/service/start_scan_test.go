@@ -33,6 +33,7 @@ type mockScanStore struct {
 	updatedJobs []*model.ScanJob
 	ipResults   []*model.IPResult
 	portResults []*model.PortScanResult
+	sslResults  []*model.SSLScanResult
 }
 
 func (m *mockScanStore) CreateScanJob(job *model.ScanJob) error {
@@ -96,6 +97,17 @@ func (m *mockScanStore) GetPortScanResultsByScan(scanJobID string) ([]*model.Por
 	return nil, nil
 }
 
+func (m *mockScanStore) CreateSSLResult(r *model.SSLScanResult) error {
+	m.sslResults = append(m.sslResults, r)
+	return nil
+}
+func (m *mockScanStore) GetSSLScanResultsByAsset(assetID string) ([]*model.SSLScanResult, error) {
+	return nil, nil
+}
+func (m *mockScanStore) GetSSLScanResultsByScan(scanJobID string) ([]*model.SSLScanResult, error) {
+	return nil, nil
+}
+
 // -- Fake scanners ---------------------------------------------------------
 type fakeIPScanner struct{}
 
@@ -116,12 +128,18 @@ func (f *fakePortScanner) Scan(a *model.Asset) ([]*model.PortResult, error) {
 	return []*model.PortResult{pr}, nil
 }
 
+type fakeSSLScanner struct{}
+
+func (f *fakeSSLScanner) Scan(a *model.Asset) (*model.SSLScanResult, error) {
+	return &model.SSLScanResult{Domain: a.Name}, nil
+}
+
 // -- Tests ------------------------------------------------------------------
 func TestStartScan_IP(t *testing.T) {
 	ms := &mockStore{assets: map[string]*model.Asset{"a1": {ID: "a1", Name: "1.2.3.4", Type: model.TypeIP}}}
 	mss := &mockScanStore{}
 
-	svc := &ScanService{storage: ms, scanStorage: mss, ipScanner: &fakeIPScanner{}}
+	svc := &ScanService{storage: ms, scanStorage: mss, ipScanner: &fakeIPScanner{}, sslScanner: &fakeSSLScanner{}}
 
 	job, err := svc.StartScan("a1", model.ScanTypeIP)
 	if err != nil {
@@ -142,7 +160,7 @@ func TestStartScan_Port(t *testing.T) {
 	ms := &mockStore{assets: map[string]*model.Asset{"a2": {ID: "a2", Name: "127.0.0.1", Type: model.TypeIP}}}
 	mss := &mockScanStore{}
 
-	svc := &ScanService{storage: ms, scanStorage: mss, portScanner: &fakePortScanner{}}
+	svc := &ScanService{storage: ms, scanStorage: mss, portScanner: &fakePortScanner{}, sslScanner: &fakeSSLScanner{}}
 
 	job, err := svc.StartScan("a2", model.ScanTypePort)
 	if err != nil {

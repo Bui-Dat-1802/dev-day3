@@ -13,6 +13,7 @@ type MockScanStorage struct {
 	jobs        map[string]*model.ScanJob
 	ipResults   map[string][]*model.IPResult
 	portResults map[string][]*model.PortScanResult
+	sslResults  map[string][]*model.SSLScanResult
 }
 
 func NewMockScanStorage() *MockScanStorage {
@@ -20,6 +21,7 @@ func NewMockScanStorage() *MockScanStorage {
 		jobs:        make(map[string]*model.ScanJob),
 		ipResults:   make(map[string][]*model.IPResult),
 		portResults: make(map[string][]*model.PortScanResult),
+		sslResults:  make(map[string][]*model.SSLScanResult),
 	}
 }
 
@@ -77,6 +79,17 @@ func (m *MockScanStorage) GetPortScanResultsByAsset(assetID string) ([]*model.Po
 }
 func (m *MockScanStorage) GetPortScanResultsByScan(scanJobID string) ([]*model.PortScanResult, error) {
 	return m.portResults[scanJobID], nil
+}
+
+func (m *MockScanStorage) CreateSSLResult(result *model.SSLScanResult) error {
+	m.sslResults[result.ScanJobID] = append(m.sslResults[result.ScanJobID], result)
+	return nil
+}
+func (m *MockScanStorage) GetSSLScanResultsByAsset(assetID string) ([]*model.SSLScanResult, error) {
+	return nil, nil
+}
+func (m *MockScanStorage) GetSSLScanResultsByScan(scanJobID string) ([]*model.SSLScanResult, error) {
+	return m.sslResults[scanJobID], nil
 }
 
 // Ensure MockScanStorage implements storage.ScanStorage

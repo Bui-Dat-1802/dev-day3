@@ -11,14 +11,16 @@ import (
 // This is a simple implementation for development and testing
 // Data is lost when the application restarts
 type MemoryStorage struct {
-	data map[string]*model.Asset // key = asset ID, value = asset pointer
-	mu   sync.RWMutex            // protects concurrent access
+	data       map[string]*model.Asset // key = asset ID, value = asset pointer
+	sslResults map[string]*model.SSLScanResult
+	mu         sync.RWMutex // protects concurrent access
 }
 
 // NewMemoryStorage creates a new in-memory storage instance
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{
-		data: make(map[string]*model.Asset),
+		data:       make(map[string]*model.Asset),
+		sslResults: make(map[string]*model.SSLScanResult),
 	}
 }
 
@@ -126,7 +128,6 @@ func (m *MemoryStorage) Filter(assetType, status string) ([]*model.Asset, error)
 	sort.Slice(assets, func(i, j int) bool {
 		return assets[i].CreatedAt.After(assets[j].CreatedAt)
 	})
-
 	return assets, nil
 }
 
@@ -151,6 +152,43 @@ func (m *MemoryStorage) Search(query string) ([]*model.Asset, error) {
 	})
 
 	return assets, nil
+}
+
+// CreateSSLResult adds a new SSL scan result to memory
+func (m *MemoryStorage) CreateSSLResult(result *model.SSLScanResult) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sslResults[result.ID] = result
+	return nil
+}
+
+// GetSSLScanResultsByAsset retrieves all SSL scan results for an asset
+func (m *MemoryStorage) GetSSLScanResultsByAsset(assetID string) ([]*model.SSLScanResult, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	results := []*model.SSLScanResult{}
+	for _, r := range m.sslResults {
+		if r.AssetID == assetID {
+			results = append(results, r)
+		}
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].CreatedAt.After(results[j].CreatedAt)
+	})
+	return results, nil
+}
+
+// GetSSLScanResultsByScan retrieves all SSL scan results for a specific scan job
+func (m *MemoryStorage) GetSSLScanResultsByScan(scanJobID string) ([]*model.SSLScanResult, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	results := []*model.SSLScanResult{}
+	for _, r := range m.sslResults {
+		if r.ScanJobID == scanJobID {
+			results = append(results, r)
+		}
+	}
+	return results, nil
 }
 
 /*

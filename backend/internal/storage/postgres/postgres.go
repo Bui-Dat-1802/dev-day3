@@ -1292,3 +1292,93 @@ These methods follow the same patterns - students can implement!
 
 Storage layer is the foundation - get it right and everything else is easier!
 */
+
+// CreateSSLResult inserts a new SSL scan result into the database
+func (p *PostgresStorage) CreateSSLResult(result *model.SSLScanResult) error {
+	sanJSON, _ := json.Marshal(result.Certificate.SAN)
+	issuesJSON, _ := json.Marshal(result.Issues)
+
+	query := `
+		INSERT INTO ssl_scan_results (
+			id, asset_id, scan_job_id, domain, 
+			subject, issuer, serial_number, valid_from, valid_until, days_until_expiry, is_expired, is_self_signed, san,
+			tls_version, cipher_suite, key_exchange, 
+			grade, issues, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+	`
+
+	_, err := p.db.Exec(query,
+		result.ID, result.AssetID, result.ScanJobID, result.Domain,
+		result.Certificate.Subject, result.Certificate.Issuer, result.Certificate.SerialNumber,
+		result.Certificate.ValidFrom, result.Certificate.ValidUntil, result.Certificate.DaysUntilExpiry,
+		result.Certificate.IsExpired, result.Certificate.IsSelfSigned, string(sanJSON),
+		result.Connection.TLSVersion, result.Connection.CipherSuite, result.Connection.KeyExchange,
+		result.Grade, string(issuesJSON), result.CreatedAt,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to create SSL result: %w", err)
+	}
+	return nil
+}
+
+// GetSSLScanResultsByAsset retrieves all SSL scan results for an asset
+func (p *PostgresStorage) GetSSLScanResultsByAsset(assetID string) ([]*model.SSLScanResult, error) {
+	query := `
+		SELECT id, asset_id, scan_job_id, domain, 
+			subject, issuer, serial_number, valid_from, valid_until, days_until_expiry, is_expired, is_self_signed, san,
+			tls_version, cipher_suite, key_exchange, 
+			grade, issues, created_at
+		FROM ssl_scan_results
+		WHERE asset_id = $1
+		ORDER BY created_at DESC
+	`
+	return p.querySSLResults(query, assetID)
+}
+
+// GetSSLScanResultsByScan retrieves SSL scan results for a specific scan job
+func (p *PostgresStorage) GetSSLScanResultsByScan(scanJobID string) ([]*model.SSLScanResult, error) {
+	query := `
+		SELECT id, asset_id, scan_job_id, domain, 
+			subject, issuer, serial_number, valid_from, valid_until, days_until_expiry, is_expired, is_self_signed, san,
+			tls_version, cipher_suite, key_exchange, 
+			grade, issues, created_at
+		FROM ssl_scan_results
+		WHERE scan_job_id = $1
+		ORDER BY created_at DESC
+	`
+	return p.querySSLResults(query, scanJobID)
+}
+
+// querySSLResults is a helper method to scan rows into SSLScanResult structs
+func (p *PostgresStorage) querySSLResults(query string, arg string) ([]*model.SSLScanResult, error) {
+	rows, err := p.db.Query(query, arg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query SSL results: %w", err)
+	}
+	defer rows.Close()
+
+	results := []*model.SSLScanResult{}
+	for rows.Next() {
+		r := &model.SSLScanResult{}
+		var sanStr, issuesStr string
+		err := rows.Scan(
+			&r.ID, &r.AssetID, &r.ScanJobID, &r.Domain,
+			&r.Certificate.Subject, &r.Certificate.Issuer, &r.Certificate.SerialNumber,
+			&r.Certificate.ValidFrom, &r.Certificate.ValidUntil, &r.Certificate.DaysUntilExpiry,
+			&r.Certificate.IsExpired, &r.Certificate.IsSelfSigned, &sanStr,
+			&r.Connection.TLSVersion, &r.Connection.CipherSuite, &r.Connection.KeyExchange,
+			&r.Grade, &issuesStr, &r.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan SSL result: %w", err)
+		}
+
+		_ = json.Unmarshal([]byte(sanStr), &r.Certificate.SAN)
+		_ = json.Unmarshal([]byte(issuesStr), &r.Issues)
+
+		results = append(results, r)
+	}
+	return results, nil
+}
+

@@ -32,6 +32,9 @@ type ScanService struct {
 	portScanner interface {
 		Scan(*model.Asset) ([]*model.PortResult, error)
 	}
+	sslScanner interface {
+		Scan(*model.Asset) (*model.SSLScanResult, error)
+	}
 }
 
 // NewScanService creates a new scan service instance
@@ -49,6 +52,7 @@ func NewScanService(store storage.Storage, scanStore storage.ScanStorage) (*Scan
 		subdomainScanner: subdomainScanner,
 		ipScanner:        scanner.NewIPScanner(),
 		portScanner:      scanner.NewPortScanner(),
+		sslScanner:       scanner.NewSSLScanner(),
 	}, nil
 }
 
@@ -111,6 +115,8 @@ func (s *ScanService) performScan(asset *model.Asset, job *model.ScanJob) {
 		err = s.performIPScan(asset, job)
 	case model.ScanTypePort:
 		err = s.performPortScan(asset, job)
+	case model.ScanTypeSSL:
+		err = s.performSSLScan(asset, job)
 	default:
 		err = fmt.Errorf("unsupported scan type: %s", job.ScanType)
 	}
@@ -634,6 +640,16 @@ func (s *ScanService) GetScanResults(jobID string) (interface{}, error) {
 		return s.scanStorage.GetIPResultsByScan(jobID)
 	case model.ScanTypePort:
 		return s.scanStorage.GetPortScanResultsByScan(jobID)
+	case model.ScanTypeSSL:
+		results, err := s.scanStorage.GetSSLScanResultsByScan(jobID)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{
+			"job_id":    jobID,
+			"scan_type": model.ScanTypeSSL,
+			"results":   results,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported scan type: %s", job.ScanType)
 	}
@@ -686,6 +702,34 @@ func (s *ScanService) performPortScan(asset *model.Asset, job *model.ScanJob) er
 	job.Results = saved
 	return nil
 }
+
+// performSSLScan executes an SSL/TLS scan and saves results
+func (s *ScanService) performSSLScan(asset *model.Asset, job *model.ScanJob) error {
+	// Only valid for domain assets
+	if asset.Type != model.TypeDomain {
+		return fmt.Errorf("asset is not a domain type: %s", asset.ID)
+	}
+
+	// Run the SSL scanner
+	result, err := s.sslScanner.Scan(asset)
+	if err != nil {
+		return fmt.Errorf("SSL scan failed: %w", err)
+	}
+
+	// Save result
+	result.ID = uuid.New().String()
+	result.AssetID = asset.ID
+	result.ScanJobID = job.ID
+	result.CreatedAt = time.Now()
+
+	if err := s.scanStorage.CreateSSLResult(result); err != nil {
+		return fmt.Errorf("failed to save SSL scan result: %w", err)
+	}
+
+	job.Results = 1
+	return nil
+}
+
 
 // GetAssetSubdomains retrieves all subdomains for an asset
 func (s *ScanService) GetAssetSubdomains(assetID string) ([]*model.Subdomain, error) {
