@@ -60,3 +60,49 @@ func TestGetAssetHandler(t *testing.T) {
 		t.Fatalf("unexpected status code: %d", w.Code)
 	}
 }
+
+func TestListAssetsHandler(t *testing.T) {
+	svc := &MockAssetService{}
+	h := NewAssetHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/assets?page=1&page_size=10", nil)
+
+	w := httptest.NewRecorder()
+	h.ListAssets(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: %d", w.Code)
+	}
+}
+
+func TestUpdateAssetHandler(t *testing.T) {
+	svc := &MockAssetService{}
+	h := NewAssetHandler(svc)
+
+	body := map[string]string{"name": "updated.com", "type": string(model.TypeDomain)}
+	b, _ := json.Marshal(body)
+
+	req := httptest.NewRequest(http.MethodPut, "/assets/a1", bytes.NewReader(b))
+	w := httptest.NewRecorder()
+
+	h.UpdateAsset(w, req)
+
+	if w.Code != http.StatusOK && w.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status code: %d", w.Code)
+	}
+}
+
+func TestDeleteAssetHandler(t *testing.T) {
+	svc := &MockAssetService{}
+	h := NewAssetHandler(svc)
+
+	req := httptest.NewRequest(http.MethodDelete, "/assets/a1", nil)
+	w := httptest.NewRecorder()
+
+	h.DeleteAsset(w, req)
+
+	if w.Code != http.StatusNoContent && w.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status code: %d", w.Code)
+	}
+}
+
