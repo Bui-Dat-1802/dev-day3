@@ -28,9 +28,11 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Install dependencies
+        working-directory: ./backend
         run: go mod download
 
       - name: Run unit tests
+        working-directory: ./backend
         run: go test ./... -v
 
   security-gosec:
