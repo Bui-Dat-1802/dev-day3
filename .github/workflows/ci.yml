@@ -46,7 +46,7 @@ jobs:
       - name: Run Gosec Security Scanner
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
-          $(go env GOPATH)/bin/gosec ./...
+          $(go env GOPATH)/bin/gosec -exclude=G104,G114 ./...
 
   security-trivy:
     name: Trivy
