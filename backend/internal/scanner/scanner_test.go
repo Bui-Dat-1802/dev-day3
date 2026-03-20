@@ -138,7 +138,7 @@ func TestSubdomainScanner_Scan(t *testing.T) {
 	s.wordlist = []string{"nonexistent-test-subdomain"}
 	s.timeout = 100 * time.Millisecond
 
-	asset := &model.Asset{ID: "d1", Name: "localhost", Type: model.TypeDomain}
+	asset := &model.Asset{ID: "d1", Name: "nonexistent.invalid", Type: model.TypeDomain}
 	ctx := context.Background()
 	
 	res, err := s.Scan(asset, ctx)
