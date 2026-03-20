@@ -45,7 +45,7 @@ jobs:
           go build ./...
       - name: Run Gosec Security Scanner
         run: |
-          curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
           $(go env GOPATH)/bin/gosec ./...
 
   security-trivy:
